@@ -5,7 +5,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -std=c++17)
 endif()
 
-# ========== 库（header-only） ==========
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME}
   INTERFACE
@@ -19,6 +18,8 @@ install(DIRECTORY include/ DESTINATION include)
 # 安装 INTERFACE target
 install(TARGETS ${PROJECT_NAME}
   EXPORT ${PROJECT_NAME}Targets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
 )
 
 # 生成 Config.cmake（支持 find_package）
@@ -46,7 +47,7 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 
 if(BUILD_EXAMPLES)
   add_executable(example src/example.cpp)
-  target_compile_definitions(example PRIVATE DEBUG_LOG_PATH=\"${CMAKE_SOURCE_DIR}/log/\")
+  target_compile_definitions(example PRIVATE DEBUG_LOG_PATH=\"${CMAKE_SOURCE_DIR}/log/\") #指定Log路径
   target_link_libraries(example PRIVATE ${PROJECT_NAME})
 
   # 纯C++安装可执行文件

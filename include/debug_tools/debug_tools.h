@@ -7,6 +7,10 @@
 #include <chrono>
 #include <memory>
 #include <sstream>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 // #define DEBUG_LOG_PATH
 namespace debug_tools{
@@ -75,11 +79,7 @@ private:
 #endif
 }; //class ConsoleColor
 
-class Debug{
-private:
-    std::ofstream logfile_;
-    Color color_;
-
+struct YMDData{
     // 获取当天日期字符串
     std::string getDateString(){
         auto t = std::time(nullptr);
@@ -93,66 +93,128 @@ private:
         oss << (tm.tm_year + 1900) << "." << (tm.tm_mon + 1) << "." << tm.tm_mday;
         return oss.str();
     }
+}; //struct YMDData
+
+/**
+ * @brief 独立线程写入文件，适配多线程环境
+ */
+class LogWriter{
+private:
+    std::queue<std::string> log_queue_;
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    bool is_running_{true};
+    std::thread worker_;
+
+public:
+    LogWriter(){
+#ifdef DEBUG_LOG_PATH
+        std::string file_path = std::string(DEBUG_LOG_PATH) + "/" + YMDData().getDateString() + ".log";
+        // std::cout << "[LogWriter is running] log path: " << file_path << "\n";
+        ConsoleColor::print("[LogWriter is running]\n", Color::MAGENTA);
+        ConsoleColor::print("Log path: ", Color::GREEN);
+        ConsoleColor::print(file_path + "\n", Color::YELLOW);
+
+        worker_ = std::thread([this, file_path](){
+            std::ofstream ofs(file_path, std::ios::app);
+            if(!ofs.is_open()){
+                std::cerr << "[LogWriter] Failed to open file: " << file_path << "\n";
+                return;
+            }
+            std::unique_lock<std::mutex> lock(mtx_);
+            while(is_running_ || !log_queue_.empty()){
+                cv_.wait(lock, [this]{ return !log_queue_.empty() || !is_running_; });
+                while(!log_queue_.empty()){
+                    ofs << log_queue_.front();
+                    log_queue_.pop();
+                    ofs.flush();
+                }
+            }
+        });
+#endif
+    }
+
+    static LogWriter& getInstance(){
+        static LogWriter instance; // 第一次调用时构造
+        return instance;
+    }
+
+    template<typename T> void log(const T& l){
+#ifdef DEBUG_LOG_PATH
+        std::ostringstream oss;
+        oss << std::dec << l;
+        std::string msg = oss.str();
+        {   
+            std::lock_guard<std::mutex> lock(mtx_);
+            log_queue_.push(msg);
+        }
+        cv_.notify_one();
+#endif
+    }
+
+    ~LogWriter(){
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            is_running_ = false;
+        }
+        cv_.notify_all();
+        if(worker_.joinable()) worker_.join();
+    }
+}; //class LogWriter
+
+class Debug{
+private:
+    Color color_;
+    LogWriter& log_ = LogWriter::getInstance();
 
     template <class T> T unpacker(const T& t){
-        // std::cout << t << " ";
         ConsoleColor::print(t, color_);
         std::cout << " ";
 #ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_ << t << " ";
+        log_.log(t);
+        log_.log(" ");
 #endif
         return t;
     }
 
     void unpacker(const char* t){
-        // std::cout << t << " ";
         ConsoleColor::print(t, color_);
         std::cout << " ";
 #ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_ << t << " ";
+        log_.log(t);
+        log_.log(" ");
 #endif
     }
 
 public:
     Debug(Color color = Color::RESET){
         color_ = color;
-#ifdef DEBUG_LOG_PATH
-        std::string log_path = std::string(DEBUG_LOG_PATH) + "/" + getDateString() + ".log";
-        logfile_.open(log_path, std::ios::app);
-        if(!logfile_){
-            std::cerr << "[Debug Error] Failed to open log file: " << log_path << std::endl;
-        }
-#endif
     }
 
-    ~Debug(){
-#ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_.close();
-#endif
-    }
+    virtual ~Debug() = default;
 
     template <typename T, typename... Args> void print(const T& t, const Args&... data){
-        // std::cout << std::dec << t << " ";
         std::cout << std::dec;
         ConsoleColor::print(t, color_);
         std::cout << " ";
 #ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_ << std::dec << t << " ";
+        log_.log(t);
+        log_.log(" ");
 #endif
         (unpacker(data), ...);
         std::cout << "\n";
 #ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_ << "\n";
+        log_.log("\n");
 #endif
     }
 
     template <typename T> void print(const T& t){
-        // std::cout << std::dec << t << "\n";
         std::cout << std::dec;
         ConsoleColor::print(t, color_);
         std::cout << "\n";
 #ifdef DEBUG_LOG_PATH
-        if(logfile_.is_open()) logfile_ << t << "\n";
+        log_.log(t);
+        log_.log("\n");
 #endif
     }
 }; //class Debug
