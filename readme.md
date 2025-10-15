@@ -1,3 +1,7 @@
+# Brief
+- debug_tools::Debug().print() 可选颜色打印, 支持任意个参数，输出日志文件(可选)
+- debug_tools::Timer 运行时长
+
 # Example
 
 ## 纯C++

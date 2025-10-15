@@ -2,7 +2,7 @@
 #include "debug_tools/debug_tools.h"
 
 int main(){
-    int n{5};
+    int n{1};
 
     while(n--){
         //debug_tools::Debug().print() 可选颜色打印, 支持任意个参数
@@ -12,6 +12,7 @@ int main(){
         //方式2： 手动宏定义 例如: #define DEBUG_LOG_PATH /home/ld/code/log/ 注意必须是绝对路径
         //该示例程序的日志输出在 log/目录下，*.log 文件命名为当天的时间
         debug_tools::Debug().print("default:", 123, std::string("debug"), "tools", 3.1415);  //默认无颜色
+        debug_tools::Debug(debug_tools::Color::CYAN).print("cyan:", 123, std::string("debug"), "tools", 3.14);
         debug_tools::Debug(debug_tools::Color::MAGENTA).print("magenta:", 123, std::string("debug"), "tools", 3.14);
         debug_tools::Debug(debug_tools::Color::YELLOW).print("yellow:", 123, std::string("debug"), "tools", 3.14);
         debug_tools::Debug(debug_tools::Color::GREEN).print("green:", 123, std::string("debug"), "tools", 3.14);
