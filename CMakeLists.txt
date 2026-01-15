@@ -12,6 +12,8 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:include>
 )
 
+find_package(OpenCV REQUIRED)
+
 # 安装头文件
 install(DIRECTORY include/ DESTINATION include)
 
@@ -46,12 +48,22 @@ install(FILES
 option(BUILD_EXAMPLES "Build example programs" ON)
 
 if(BUILD_EXAMPLES)
-  add_executable(example src/example.cpp)
-  target_compile_definitions(example PRIVATE DEBUG_LOG_PATH=\"${CMAKE_SOURCE_DIR}/log/\") #指定Log路径
-  target_link_libraries(example PRIVATE ${PROJECT_NAME})
+  add_executable(tools src/exp_tools.cpp)
+  target_compile_definitions(tools PRIVATE DEBUG_LOG_PATH=\"${CMAKE_SOURCE_DIR}/log/\") #指定Log路径
+  target_link_libraries(tools PRIVATE ${PROJECT_NAME})
+
+  add_executable(mono_queue src/exp_mono_queue.cpp)
+  target_compile_definitions(mono_queue PRIVATE PICTURE_PATH=\"${CMAKE_SOURCE_DIR}/cmake/\")
+  target_link_libraries(mono_queue PRIVATE ${PROJECT_NAME} ${OpenCV_LIBS})
+
+  add_executable(time_dispatcher src/exp_time_dispatcher.cpp)
+  target_link_libraries(time_dispatcher PRIVATE ${PROJECT_NAME})
 
   # 纯C++安装可执行文件
-  install(TARGETS example
+  install(TARGETS 
+    tools
+    mono_queue
+    time_dispatcher
     RUNTIME DESTINATION bin
   )
 endif()
@@ -61,7 +73,10 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/package.xml")
   find_package(ament_cmake REQUIRED)
   if(BUILD_EXAMPLES)
-    install(TARGETS example
+    install(TARGETS 
+      tools
+      mono_queue
+      time_dispatcher
       DESTINATION lib/${PROJECT_NAME}
     )
   endif()

@@ -1,0 +1,4 @@
+source;share/debug_tools/local_setup.bash
+source;share/debug_tools/local_setup.dsv
+source;share/debug_tools/local_setup.sh
+source;share/debug_tools/local_setup.zsh
